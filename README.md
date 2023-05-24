@@ -2,6 +2,9 @@
 
 *Have packaged the environment and uploaded it to \textbf{Docker Hub}\footnote{docker pull 27718842/dash_ndnsim_samus }.*
 
+### Personal Experimental Notebook
+Today, I delved into the world of Information-Centric Networking (ICN) with amust-ndnSIM. The simulation provides a platform to evaluate the performance of Dynamic Adaptive Streaming over ICN.
+
 Within this tutorial, we will try to cover  examples like file-transfers, up to building a large example with several multimedia streaming clients(DASH). We assume that multimedia data(dataset) are stored in /home/someuser/multimediaData, whereas you might want to replace someuser with your username.
 
 This tutorial is organized as follows: Section 1 explains how the file transfers are organized and implemented. Section 2 explains how adaptive multimedia streaming can be used. Last but not least, we will show how to generate a large network using BRITE in Section 3.
@@ -21,10 +24,13 @@ We achieved fragmentation by providing a so called Manifest for each file, which
 The FileServer will respond with the respective payload, and the file consumer will stop requesting once it has received the whole file. The consumer also handles timeouts and re-transmissions if necessary. 
 
 
-### Hosting Content (Producer)
-Before we start, we would like to point out that our examples are very similar to the basic examples provided by the [ndnSIM tutorial page](http://ndnsim.net/2.1/examples.html). Please have a look at the examples there before you start working with AMuSt-ndnSIM.
 
-As already mentioned, hosting content does not require any special attention. You can host content on any ndnSIM node, similar as you would do with the ``ns3::ndn::Producer``, by using the ``ns3::ndn::FileServer`` application, as shown in the following sourcecode:
+## Hosting Content (Producer)
+Before we start, we would like to point out that our examples are very similar to the basic examples provided by the [ndnSIM tutorial page](http://ndnsim.net/2.1/examples.html). Please have a look at the examples there before you start working.
+
+Hosting content is straightforward. You can host content on any ndnSIM node using the `ns3::ndn::FileServer` application. The following code snippet shows how to set up a producer:
+
+`As already mentioned, hosting content does not require any special attention. You can host content on any ndnSIM node, similar as you would do with the ``ns3::ndn::Producer``, by using the ``ns3::ndn::FileServer`` application, as shown in the following sourcecode:
 ```cplusplus
   // Producer
   ndn::AppHelper producerHelper("ns3::ndn::FileServer");
@@ -47,7 +53,9 @@ You can install this producer on as many nodes you want. Just make sure to also 
   ndn::GlobalRoutingHelper::CalculateRoutes();
 ```
 
-### Requesting Content (Consumer)
+## Requesting Content (Consumer)
+
+Similar to the producer setup, the `FileConsumer` is installed on a node. The following code snippet shows how to set up a consumer:
 Similar to the example above, the client, also called ``FileConsumer``, needs to be installed on some node:
 ```cplusplus
   // Consumer
@@ -65,7 +73,7 @@ mkdir ~/somedata
 fallocate -l 10M ~/somedata/file1.img
 ```
 
-Then, create a .cpp file with the following content in your scenario subfolder (see [AMuSt-ndnSIM/examples/ndn-file-simple-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-file-simple-example1.cpp)):
+Then, create a .cpp file with the following content in your scenario subfolder (see [examples/ndn-file-simple-example1.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-file-simple-example1.cpp)):
 ```cplusplus
   // setting default parameters for PointToPoint links and channels
   Config::SetDefault("ns3::PointToPointNetDevice::DataRate", StringValue("10Mbps"));
@@ -130,8 +138,12 @@ Though you will not see any output. We will talk about generating some output ba
 ./waf --run ndn-file-simple-example1 --vis
 ```
 
-### Tracing File Transfers
-For more information about the file transfer, especially the download speed, we have implemented file transfer tracers on the consumer side, similar to existing tracers in ndnSIM. At first, we need to add 3 functions to  our previous scenario. They will deal with printing information to the console:
+
+## Tracing File Transfers
+
+For better understanding of the file transfer process, especially the download speed, file transfer tracers are implemented on the consumer side. These tracers output information about the file download start, receipt of the manifest, and completion of the file download.
+
+ At first, we need to add 3 functions to  our previous scenario. They will deal with printing information to the console:
 ```cplusplus
 // FileDownloadedTrace is called when the file download finished
 void
@@ -167,7 +179,7 @@ Next, we need to make sure to connect them as trace sources:
                                MakeCallback(&FileDownloadStartedTrace));
 ```
 
-You can find the whole sourcecode under [AMuSt-ndnSIM/examples/ndn-file-simple-example2-tracers.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-file-simple-example2-tracers.cpp). The output of this looks as follows:
+You can find the whole sourcecode under [examples/ndn-file-simple-example2-tracers.cpp]https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-file-simple-example2-tracers.cpp). The output of this looks as follows:
 
 ```
 Trace: File started downloading: 0 /myprefix/file1.img
@@ -181,7 +193,10 @@ You might now wonder: Why is the throughput only 179 Kilobit/s, when the link ca
 
 
 ### Pipe-Lining Interests (Enhanced File Consumer)
-While the basic FileConsumer works for testing, we recommend using the enhanced version, ```FileConsumerCbr```, (Cbr = Constant bit rate), which issues pipelines Interests to fully utilize the link capacity the consumer has. This is achieved by calculating the average number of data packets per second that this consumer can handle (read: ```LinkDownloadSpeedInBytes/PayloadSize```). In addition, we also issue Interests for File/1, File/2, ... before we receive an answere for File/Manifest. While this could lead to unnecessary Interests, in most cases it will speed up the file transfer (as the files transferred are large enough).
+
+To fully utilize the link capacity, I recommend using the enhanced version of the `FileConsumer`, the `FileConsumerCbr`. This application issues pipeline Interests based on the average number of data packets per second that the consumer can handle.
+
+ This is achieved by calculating the average number of data packets per second that this consumer can handle (read: ```LinkDownloadSpeedInBytes/PayloadSize```). In addition, we also issue Interests for File/1, File/2, ... before we receive an answere for File/Manifest. While this could lead to unnecessary Interests, in most cases it will speed up the file transfer (as the files transferred are large enough).
 
 Using the Enhanced File Consumer is as simple as replacing ``ns3::ndn::FileConsumer`` with ``ns3::ndn::FileConsumerCbr``, as shown in the following code:
 
@@ -191,7 +206,7 @@ Using the Enhanced File Consumer is as simple as replacing ``ns3::ndn::FileConsu
   consumerHelper.SetAttribute("FileToRequest", StringValue("/myprefix/file1.img"));
 ```
 
-You can find the full example here [AMuSt-ndnSIM/examples/ndn-file-simple-example3-enhanced.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples//ndn-file-simple-example3-enhanced.cpp).
+You can find the full example here [(https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-file-simple-example3-enhanced.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/blob/master/examples//ndn-file-simple-example3-enhanced.cpp).
 
 The output shows a throughput of 961 Kilobit/s and looks like this:
 ```
@@ -223,7 +238,7 @@ When considering a larger scenario with many clients, it might be required to lo
   ndn::FileConsumerLogTracer::InstallAll("file-consumer-log-trace.txt");
 ```
 
-An example of this is provided in [AMuSt-ndnSIM/examples/ndn-file-simple-example4-multi.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/tree/master/examples/ndn-file-simple-example4-multi.cpp). The output produced by this scenario looks like this:
+An example of this is provided in [examples/ndn-file-simple-example4-multi.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/tree/master/examples/ndn-file-simple-example4-multi.cpp). The output produced by this scenario looks like this:
 ```
 Trace: File started downloading: 0 /myprefix/file1.img
 Trace: File started downloading: 0 /myprefix/file1.img
@@ -298,7 +313,7 @@ Assuming this file is called fake.csv, the producer and consumer configuration w
   producerHelper.SetAttribute("MetaDataFile", StringValue("fake.csv"));
   producerHelper.Install(nodes.Get(4)); // install to some node from nodelist
 ```
-The full example is available here: [AMuSt-ndnSIM/examples/ndn-file-simple-example5-virtual.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/tree/master/examples/ndn-file-simple-example5-virtual.cpp).
+The full example is available here: [examples/ndn-file-simple-example5-virtual.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-file-simple-example5-virtual.cpp).
 
 
 ### Summary
@@ -481,7 +496,7 @@ Finally, creating a server is as simple as:
 ```
 
 
-See [examples/ndn-multimedia-avc-server.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-avc-server.cpp) for the full example for AVC. 
+See [examples/ndn-multimedia-avc-server.cpp](https://github.com/ulen2000/Performance-Evaluation-o-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-multimedia-avc-server.cpp) for the full example for AVC. 
 
 ### Hosting Real Content using FakeFileServer
 This part assumes that you followed the DASH Dataset part just before this section. You probably noticed that a good portion of storage space is gone. To counter this problem, we provide ``FakefileServer`` with a CSV file for BBB (AVC), which you can get [here](../datasets/segmentlist/). This file contains a list of all segments and their size. We generated this list by first downloading the dataset and then using some Linux command line magic (mainly sed and awk):
@@ -513,7 +528,7 @@ Now we need to configure two producers as follows
   fakeSegmentProducerHelper.Install(nodes.Get(0)); // install to some node from nodelist
 ```
 
-See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-avc-fake-server.cpp) for the full example.
+See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-multimedia-avc-fake-server.cpp) for the full example.
 
 
 
@@ -666,12 +681,6 @@ The DASH client needs to be installed on some node. It will automatically reques
 ### Tracing DASH Clients
 You can also trace DASH clients and get information about buffer levels, segment numbers, download times, and other metrics. It is very similar to tracing file transfers. You can also use the ns-3 tracing facilities to trace other metrics, such as link utilization or packet loss.
 
-## 3. Generating Large Networks using BRITE
-In order to generate larger networks and test the scalability of your application, you can use the BRITE topology generator. This allows you to generate complex network topologies based on different models, such as Barabási–Albert or Waxman models.
-
-We will not cover BRITE in detail, but we encourage you to check out the [BRITE User Manual](https://www.cs.bu.edu/brite/user_manual/node14.html)
-### Full Example: Basic DASH Streaming
-A full example can be found in the [AMuSt-ndnSIM/examples/ndn-dash-simple-example.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-dash-simple-example.cpp) file.
 
 ### Tracing DASH Streaming
 For more detailed information about the DASH streaming, especially the observed throughput and the selected multimedia quality, you can use the `DashTrace` function:
@@ -692,9 +701,16 @@ Next, we need to make sure to connect it as a trace source:
 Config::ConnectWithoutContext("/NodeList/*/ApplicationList/*/DashPlayerStats", MakeCallback(&DashTrace));
 ```
 
-You can find the full source code in the [[AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/examples/ndn-dash-simple-example-tracers.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-dash-simple-example-tracers.cpp) file.
+You can find the full source code in the [https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-dash-simple-example-tracers.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/blob/master/examples/ndn-dash-simple-example-tracers.cpp) file.
+
+### Full Example: Basic DASH Streaming
+A full example can be found in the [examples/ndn-dash-simple-example.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/blob/master/examples/ndn-dash-simple-example.cpp) file.
 
 ## 3. Generating Large Networks using BRITE
+
+In order to generate larger networks and test the scalability of your application, you can use the BRITE topology generator. This allows you to generate complex network topologies based on different models, such as Barabási–Albert or Waxman models.
+
+We will not cover BRITE in detail, but we encourage you to check out the [BRITE User Manual](https://www.cs.bu.edu/brite/user_manual/node14.html).
 In this section, we will show you how to generate larger networks using the BRITE topology generator. BRITE can be used to generate different kinds of topologies, including hierarchical, router-level, and AS-level topologies. 
 
 You can use the `BriteTopologyHelper` to generate the network topology and install the NDN stack:
@@ -702,54 +718,6 @@ You can use the `BriteTopologyHelper` to generate the network topology and insta
 ```cplusplus
 BriteTopologyHelper briteth;
 briteth.BuildBriteTopology(nd
-
-## 3. Large Example: DASH Streaming with BRITE
-
-In this last section, we will create a large example using the BRITE topology generator. We will also show how to create multimedia streaming clients, i.e., DASH clients, and how to trace their behavior.
-
-### BRITE
-
-At first, we need to create a BRITE configuration file. We will use the briteconf/ASBarabasiAlbert.conf file from the [ndnSIM examples directory](https://github.com/named-data-ndnSIM/ndnSIM/blob/master/examples/briteconf/ASBarabasiAlbert.conf). The only change we need to make is the EdgeConn parameter. In our case, we will use 2. 
-
-Next, we create a scenario similar to before. The difference is that we use the BRITE topology helper. We also specify our custom BRITE configuration file. The relevant code is as follows:
-```cplusplus
-  // Creating nodes
-  BriteTopologyHelper briteth;
-  briteth.SetConfFile("src/ndnSIM/examples/briteconf/ASBarabasiAlbert.conf");
-  briteth.AssignStreams(3);
-  briteth.BuildBriteTopology(ndnHelper);
-```
-
-You can find the full source code here [[AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/examples/ndn-file-brite.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-file-brite.cpp).
-
-This will create a network with about 20 nodes. We also added some random server and client. 
-
-### Tracing in BRITE
-
-Tracing in BRITE is similar to the previous examples. The only difference is that you need to enable tracing on the BRITE topology helper:
-```cplusplus
-  // Enable BRITE Traces
-  briteth.EnableAsciiAll("brite.trace");
-  briteth.EnablePcapAll("brite");
-```
-You can now start the simulation with
-```bash
-./waf --run ndn-file-brite
-```
-
-### Adding Multimedia Streaming Clients (DASH)
-
-To add DASH clients, we will use the ns3::ndn::PlayerApp application. This application was developed specifically for DASH clients. It has many parameters to adjust the client's behavior. 
-
-In our case, we will add a single DASH client that will request a video from a server. The relevant code is as follows:
-```cplusplus
-  // DASH Consumer
-  ndn::AppHelper consumerHelper("ns3::ndn::PlayerApp");
-  // Name of video to request
-  consumerHelper.SetAttribute("VideoId", StringValue("/myprefix/BigBuckBunny_2sinit.mp4"));
-  // Start and stop time
-  consumerHelper.SetAttribute("StartTime", StringValue("0.0")); // in Sec
-  consumerHelper.SetAttribute("Stop
 
 Full example here: [examples/ndn-multimedia-brite-example1.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-multimedia-brite-example1.cpp).
 ------------------
