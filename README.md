@@ -1,6 +1,6 @@
 # Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking
 
-*Have packaged the environment and uploaded it to \textbf{Docker Hub}\footnote{docker pull 27718842/dash_ndnsim_samus }.*
+*Have packaged the environment and uploaded it to [Docker Hub](docker pull 27718842/dash_ndnsim_samus).*
 
 ### Personal Experimental Notebook
 Today, I delved into the world of Information-Centric Networking (ICN) with amust-ndnSIM. The simulation provides a platform to evaluate the performance of Dynamic Adaptive Streaming over ICN.
