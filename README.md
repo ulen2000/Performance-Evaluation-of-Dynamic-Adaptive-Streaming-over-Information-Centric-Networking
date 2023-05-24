@@ -532,7 +532,7 @@ See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ulen2000/Pe
 
 
 
-## 2. Adaptive Multimedia Streaming (DASH)
+## 3. Adaptive Multimedia Streaming (DASH)
 
 ### Basics
 For the next part of the tutorial, we will move on to adaptive multimedia streaming, using MPEG-DASH. We have implemented a simple DASH client and a DASH server. The DASH client is built upon the enhanced File Consumer, and it additionally maintains a buffer, and it can decide which quality/bitrate to request next. The DASH server is built upon the File Server, and it automatically generates the MPEG-DASH MPD (Media Presentation Description) for the consumer.
@@ -643,7 +643,7 @@ MP4Box -dash 2000 -rap -segment-name '%s' -url-template -out ~/multimediaData/vi
 
 In this example, `yourvideo.mp4` is the video you want to stream. The `2000` parameter is the segment duration in milliseconds.
 
-## 2. Adaptive Multimedia Streaming (DASH)
+## 4. Adaptive Multimedia Streaming (DASH)
 After understanding the basic file transfers, we will now focus on how to handle multimedia streams, in particular, the DASH protocol.
 
 Dynamic Adaptive Streaming over HTTP (DASH) is a popular streaming protocol. In DASH, the client (player) selects one of several available representations of a video and downloads the respective segments (usually 2 to 10 seconds of the video). The DASH client makes decisions based on the current network conditions, buffer levels, and other factors. It aims to maximize the video quality while preventing playback interruptions (buffer underruns).
