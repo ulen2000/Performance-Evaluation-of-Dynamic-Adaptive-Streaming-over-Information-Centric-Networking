@@ -881,7 +881,13 @@ Run the Simulation
 
 
 Full example here: [examples/ndn-multimedia-brite-example1.cpp](examples/ndn-multimedia-brite-example1.cpp).
-Brite config File: TODO
+------------------
+I have packaged the environment and uploaded it to [Docker Hub](docker pull 27718842/dash\_ndnsim\_samus).
+
+All experiment running code is consolidated into this file: ccr_scenario.py. 
+One could adapt the settings from lines 490–530 (e.g., costs, delay, capacity used in this paper). 
+After downloading the dataset, we should adapt line 303 in ./itec-ndn/scenarios/ccr_scenario.cc to point to the dataset directory.  
+
 
 ------------------
 
@@ -904,13 +910,6 @@ Bibtex:
   year={2016}
 }
 ```
-
-
-Acknowledgements
-================
-This work was partially funded by the Austrian Science Fund (FWF) under the CHIST-ERA project [CONCERT](http://www.concert-project.org/) 
-(A Context-Adaptive Content Ecosystem Under Uncertainty), project number I1402.
-
 
 
 
