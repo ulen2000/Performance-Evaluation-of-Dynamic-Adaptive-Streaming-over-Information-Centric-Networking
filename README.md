@@ -583,7 +583,7 @@ Hosting content is as easy as hosting files. The only difference is that you hav
   producerHelper.SetAttribute("MPDFileToServe", StringValue("/dash/dash.mpd"));
   producerHelper.SetAttribute("MP
 
-## 2. Multimedia Streaming (DASH over ICN)
+### Multimedia Streaming (DASH over ICN)
 
 Adaptive multimedia streaming is a complex topic. In this tutorial, we will only cover how to use it in here. We will not cover the actual implementation and details of the DASH client and server. For more information on this topic, please refer to the [original publication](https://conferences.sigcomm.org/sigcomm/2016/pdf/papers/p673.pdf).
 
@@ -643,70 +643,9 @@ MP4Box -dash 2000 -rap -segment-name '%s' -url-template -out ~/multimediaData/vi
 
 In this example, `yourvideo.mp4` is the video you want to stream. The `2000` parameter is the segment duration in milliseconds.
 
-## 4. Adaptive Multimedia Streaming (DASH)
-After understanding the basic file transfers, we will now focus on how to handle multimedia streams, in particular, the DASH protocol.
-
-Dynamic Adaptive Streaming over HTTP (DASH) is a popular streaming protocol. In DASH, the client (player) selects one of several available representations of a video and downloads the respective segments (usually 2 to 10 seconds of the video). The DASH client makes decisions based on the current network conditions, buffer levels, and other factors. It aims to maximize the video quality while preventing playback interruptions (buffer underruns).
-
-To simulate DASH, we implemented a DASH client (`ns3::ndn::DashClient`) and a DASH server (`ns3::ndn::DashServer`). The DASH server is very similar to the FileServer we discussed earlier, but it can only host multimedia content in DASH format. Similarly, the DASH client is an advanced version of the FileConsumer. It's not just requesting one file, but several files (video segments) in a row.
-
-The DASH client implementation is based on the concepts presented in [1]. It uses a simple buffer-based adaptation algorithm: if the buffer level exceeds a certain threshold, the DASH client will select a higher quality for the next segment, and if the buffer level is below a certain threshold, it will select a lower quality.
-
-We will discuss the following aspects: how to host content, how to request content, and how to trace a DASH client.
-
-### Hosting Content (DASH Server)
-Hosting DASH content is very similar to hosting any other content. The difference is that we use the `ns3::ndn::DashServer` instead of the `ns3::ndn::FileServer`. The multimedia content needs to be in DASH format.
-
-```cplusplus
-  // DASH Server
-  ndn::AppHelper producerHelper("ns3::ndn::DashServer");
-
-  // Producer will reply to all requests starting with /myprefix
-  producerHelper.SetPrefix("/myprefix");
-  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/multimediaData/"));
-  producerHelper.Install(nodes.Get(2)); // install to a node from the nodecontainer
-```
-
-### Requesting Content (DASH Client)
-The DASH client needs to be installed on some node. It will automatically request the MPD (Media Presentation Description) file and start requesting segments based on the MPD and its buffer level. The DASH client also handles timeouts and re-transmissions if necessary.
-
-```cplusplus
-  // DASH Consumer
-  ndn::AppHelper consumerHelper("ns3::ndn::DashConsumer");
-  consumerHelper.SetAttribute("MPD", StringValue("/myprefix/video1/video.mpd"));
-
-  consumerHelper.Install(nodes.Get(0)); // install to some node from nodelist
-```
-
-### Tracing DASH Clients
-You can also trace DASH clients and get information about buffer levels, segment numbers, download times, and other metrics. It is very similar to tracing file transfers. You can also use the ns-3 tracing facilities to trace other metrics, such as link utilization or packet loss.
-
-
-### Tracing DASH Streaming
-For more detailed information about the DASH streaming, especially the observed throughput and the selected multimedia quality, you can use the `DashTrace` function:
-
-```cplusplus
-// DashTrace is called when a DASH segment has been downloaded
-void
-DashTrace(Ptr<ns3::ndn::App> app, shared_ptr<const ndn::Name> interestName, uint32_t segmentNr, uint32_t segmentSize, int64_t segmentBitrate, double segmentDownloadSpeed)
-{
-  std::cout << "Trace: Segment finished downloading: " << Simulator::Now().GetMilliSeconds () << " "<< *interestName << " SegmentNr: " << segmentNr << " SegmentSize: " << segmentSize << " SegmentBitrate: " << segmentBitrate << " DownloadSpeed: " << segmentDownloadSpeed << std::endl;
-}
-```
-
-Next, we need to make sure to connect it as a trace source:
-
-```cplusplus
-// Connect Tracer
-Config::ConnectWithoutContext("/NodeList/*/ApplicationList/*/DashPlayerStats", MakeCallback(&DashTrace));
-```
-
-You can find the full source code in the [https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-dash-simple-example-tracers.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/blob/master/examples/ndn-dash-simple-example-tracers.cpp) file.
-
-### Full Example: Basic DASH Streaming
 A full example can be found in the [examples/ndn-dash-simple-example.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/blob/master/examples/ndn-dash-simple-example.cpp) file.
 
-## 3. Generating Large Networks using BRITE
+## 4. Generating Large Networks using BRITE
 
 In order to generate larger networks and test the scalability of your application, you can use the BRITE topology generator. This allows you to generate complex network topologies based on different models, such as Barabási–Albert or Waxman models.
 
