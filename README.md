@@ -517,370 +517,241 @@ See [examples/ndn-multimedia-avc-fake-server.cpp](https://github.com/ChristianKr
 
 
 
+## 2. Adaptive Multimedia Streaming (DASH)
 
+### Basics
+For the next part of the tutorial, we will move on to adaptive multimedia streaming, using MPEG-DASH. We have implemented a simple DASH client and a DASH server. The DASH client is built upon the enhanced File Consumer, and it additionally maintains a buffer, and it can decide which quality/bitrate to request next. The DASH server is built upon the File Server, and it automatically generates the MPEG-DASH MPD (Media Presentation Description) for the consumer.
 
+In order to use the DASH client and server, we first need to prepare some multimedia data. We will use the Big Buck Bunny dataset, which can be downloaded [here](http://www-itec.uni-klu.ac.at/ftp/datasets/DASHDataset2014/BigBuckBunny/). 
 
-## 3. Using the Multimedia Consumer
-
-In this section we will talk about the multimedia consumer and how to use it, with both AVC and SVC content. We are assuming that you are using BBB as explained above.
-
-### AVC Content
-Our multimedia consumers are built on top of the FileConsumers, therefore it is necessary to specify which FileConsumer you want. We recommend using the ``FileConsumerCbr`` class, hence you should use the following code for requesting AVC content:
-```cplusplus
-  ns3::ndn::AppHelper consumerHelper("ns3::ndn::FileConsumerCbr::MultimediaConsumer");
-  consumerHelper.SetAttribute("AllowUpscale", BooleanValue(true));
-  consumerHelper.SetAttribute("AllowDownscale", BooleanValue(false));
-  consumerHelper.SetAttribute("ScreenWidth", UintegerValue(1920));
-  consumerHelper.SetAttribute("ScreenHeight", UintegerValue(1080));
-  consumerHelper.SetAttribute("StartRepresentationId", StringValue("auto"));
-  consumerHelper.SetAttribute("MaxBufferedSeconds", UintegerValue(30));
-  consumerHelper.SetAttribute("StartUpDelay", StringValue("0.1"));
-
-  consumerHelper.SetAttribute("AdaptationLogic", StringValue("dash::player::RateAndBufferBasedAdaptationLogic"));
-  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/AVC/BBB-2s.mpd" )));
-
-  ApplicationContainer app1 = consumerHelper.Install (nodes.Get(2));
-```
-
-See [examples/ndn-multimedia-simple-avc-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-avc-example1.cpp) for the full example.
-
-
-### SVC Content
-This is very similar to the AVC case, you just need to specify a different adaptation logic (and the correct MPD file):
-
-```cplusplus
-  ns3::ndn::AppHelper consumerHelper("ns3::ndn::FileConsumerCbr::MultimediaConsumer");
-  consumerHelper.SetAttribute("AllowUpscale", BooleanValue(true));
-  consumerHelper.SetAttribute("AllowDownscale", BooleanValue(false));
-  consumerHelper.SetAttribute("ScreenWidth", UintegerValue(1920));
-  consumerHelper.SetAttribute("ScreenHeight", UintegerValue(1080));
-  consumerHelper.SetAttribute("StartRepresentationId", StringValue("auto"));
-  consumerHelper.SetAttribute("MaxBufferedSeconds", UintegerValue(30));
-  consumerHelper.SetAttribute("StartUpDelay", StringValue("0.1"));
-
-  consumerHelper.SetAttribute("AdaptationLogic", StringValue("dash::player::SVCBufferBasedAdaptationLogic"));
-  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/SVC/BBB-III.mpd" )));
-
-  ApplicationContainer app1 = consumerHelper.Install (nodes.Get(2));
-```
-
-
-See [examples/ndn-multimedia-simple-svc-example1.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-svc-example1.cpp) for the full example.
-
-
-### Multimedia Consumers Options
-Our Multimedia Consumers have plenty of options to be configured. First of all, the two most important ones are 
-
- * ``AdaptationLogic`` 
- *  ``MpdFileToRequest``
-
-``MpdFileToRequest`` is, like the name suggests, the MPD file of the video to play. For the purpose of having a quicker start-up time, it is possible to use gzip'ed MPD files here, by specifying a file like this: ``mpdfilename.mpd.gz``(the file obviously needs to be available in the directory).
-``AdaptationLogic``  depends heavily on the MPD file. If the MPD file contains SVC content, the following adaptation logics are available: 
-
- * ``SVCBufferBasedAdaptationLogic`` - Buffer based adaptation logic for SVC, based on BIEB (Sieber et al., [Implementation and User-centric Comparison of a Novel Adaptation Logic for DASH with SVC](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6573184&tag=1)) with alpha=8 and gamma=16 - make sure to set ``MaxBufferedSeconds`` to at least ``gamma + 2 * alpha + 1`` (in this case 33), we recommend setting it to at least 60
-* ``SVCBufferBasedAdaptationLogicAggressive`` - same as above, but with alpha=2 and gamma=8, we recommend setting ``MaxBufferedSeconds`` to at least 30
-* ``SVCBufferBasedAdaptationLogicNormal``- same as above, but with alpha=4 and gamma=8, we recommend setting ``MaxBufferedSeconds`` to at least 30
- * ``SVCRateBasedAdaptationLogic``
- * ``SVCNoAdaptationLogic`` - requests all SVC representations, starting from the base layer, until the segment needs to be consumed
- * ``AlwaysLowestAdaptationLogic`` (default value) - use always the lowest representation available (warning: this might not work in all cases for SVC content)
-
-For AVC:
-
- * ``AlwaysLowestAdaptationLogic`` (default value) - use always the lowest representation available
- * ``RateBasedAdaptationLogic``- the estimated throughput is the main deciding factor for the representation used
- * ``RateAndBufferBasedAdaptationLogic`` - the clients local buffer and the estimated throughput will be used for determining the representation
- * ``DASHJS`` - TODO
-
-
-Then we have several options that the clients can use for their "simulated screens":
-
- * ``ScreenWidth`` and ``ScreenHeight``
- * ``AllowUpscale`` and ``AllowDownscale``
-
-Those 4 options are used to determine which representations from the MPD file are unusable for the client. For example, if you have a mobile phone with a 1280x720 screen, you should not request a representation with 1920x1080 and downscale the video.
-Instead, you can request the 640x320 representation and upscale it to 1280x720 or request the 1280x720 representation and use it without scaling. For some scenarios it might even be necessary to disable upscaling too.
-
-
- * ``MaxBufferedSeconds`` (default: 30)
- * ``StartUpDelay``(default: 2.0)
-
-Those options are used to determine the maximum amount of buffered seconds. While on most computers, this number could be rather large, especially with mobile phones and tablets this number is restricted by the available memory. Common practice for those is around 30 seconds.
-The ``StartUpDelay`` is used for scenarios, where you want the client to buffer first, and start playing after a certain amount of time. This could beneficial for scenarios where you have a slow Internet connection, as it is better to buffer first, and then play. If set to 0, the player will start playing the video as soon as the first segment has been successfully downloaded.
-
- * ``StartRepresentationId`` (default: "auto")
-
-Can take the following values: "lowest", "auto" (means: use adaptation logic) or a certain representation id. This attribute is for testing purpose, and we recommend using the default setting "auto".
-
-## Multimedia Consumers and Tracers
-For evaluation purpose, we have a special tracer for multimedia consumers available. This tracer logs the following events:
-
- * Segment consumed at which time with representation id and representation bitrate
- * Video playback stall (freeze)
- * Start-up delay
-
-Example:
-```cplusplus
-
-// ...
-int
-main(int argc, char* argv[])
-{
-  // ...
-  // install the tracer
-  ndn::DASHPlayerTracer::InstallAll("dash-output.txt");
-
-  Simulator::Run();
-  Simulator::Destroy();
-  // ...
-}
-```
-
-The output will be a CSV file called ``dash-output.txt`` (or whatever you specify), and looks like this (i.e., for AVC content)
-```
-Time    Node    SegmentNumber   SegmentRepID    SegmentExperiencedBitrate(bit/s)        BufferLevel(s)  StallingTime(msec)      SegmentDepIds
-0.881616        2       0       13      7862849 0       881
-2.88162 2       1       13      7710636 2       0
-4.88162 2       2       13      8065030 4       0
-6.88162 2       3       18      8911272 4       0
-8.88162 2       4       19      9058920 4       0
-10.8816 2       5       19      9016160 8       0
-12.8816 2       6       19      8992737 10      0
-14.8816 2       7       19      8978521 10      0
-16.8816 2       8       19      8367449 10      0
-18.8816 2       9       19      8051206 10      0
-20.8816 2       10      19      8302074 12      0
-22.8816 2       11      19      8534599 12      0
-24.8816 2       12      19      9062071 14      0
-26.8816 2       13      19      9028393 18      0
-28.8816 2       14      19      9036475 18      0
-30.8816 2       15      19      9059804 20      0
-...
-
-```
-SVC content will look similar, but will have the SegmentDepIds (Segment Dependency Representation IDs) filled.
-
-See [AMuSt-ndnSIM/examples/ndn-multimedia-simple-avc-example2-tracer.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-avc-example2-tracer.cpp) and [examples/ndn-multimedia-simple-svc-example2-tracer.cpp](https://github.com/ChristianKreuzberger/AMuSt-ndnSIM/blob/master/examples/ndn-multimedia-simple-svc-example2-tracer.cpp) for the full sourcecode.
-
-
-### Other Tracers
-For evaluation purposes most other tracers should also work, for instance, Content Store Tracer. Please note, that due to some limitations with ns-3/ndnSIM, the AppId of the MultimediaConsumer will change over time, therefore you need to filter the Node (```NodeId```), instead of ```AppId``` in all traces.
-
-------------------
-
-## 4. Building Large Networks with BRITE and Installing Multimedia Clients
-TODO
-
-
-The [BRITE Network Generator](http://www.cs.bu.edu/brite/) is an open source project, which can be used by ndnSIM/ns-3. We have set up a wrapper class (see [helper/ndn-brite-topology-helper.cpp](helper/ndn-brite-topology-helper.cpp) and  [helper/ndn-brite-topology-helper.hpp](helper/ndn-brite-topology-helper.hpp)). All you need is a brite config file.
-
-
-
-```cplusplus
-// include the header file
-#include "ns3/ndnSIM/helper/ndn-brite-topology-helper.hpp"
-// ...
-
-  // Create Brite Topology Helper
-  ndn::NDNBriteTopologyHelper bth ("brite.conf");
-  bth.AssignStreams (3);
-  // tell the topology helper to build the topology
-  bth.BuildBriteTopology ();
-
-// ...
-
-```
-
-You can find the full example later. 
-
-### Random Network
-Use the ``--RngRun=`` option of [ns-3 Random Variables](https://www.nsnam.org/docs/manual/html/random-variables.html#id1) to generate different instances of the random network.
-
-Example:
+We need to convert this dataset from the original MP4 format to the MPEG-DASH format. The easiest way is to use the [MP4Box](https://gpac.wp.mines-telecom.fr/mp4box/dash/) tool. The following bash script can be used to convert all .mp4 files into .m4s files (with a segment duration of 2 seconds):
 ```bash
-./waf --run "ndn-multimedia-brite-example1 --RngRun=0" --vis
-./waf --run "ndn-multimedia-brite-example1 --RngRun=1" --vis
-./waf --run "ndn-multimedia-brite-example1 --RngRun=2" --vis
+#!/bin/bash
+mkdir -p dash/
+for f in `ls *.mp4`; do
+   MP4Box -dash 2000 -frag 2000 -rap -segment-name 'dash/'$f'_' $f
+done
 ```
+This should result in a lot of .m4s files within the dash/ subdirectory, and an MPD file (dash.mpd) in your current directory.
 
+Next, we need to create a .csv file which describes the bitrates of the videos. The first column of the .csv file contains the name of the representation (in the MPD file), and the second column contains the bitrate of the representation in Kilobit per second.
 
-## Installing the NDN Stack, Multimedia Clients, Routing, ...
-First, we include the ndn brite helper and configure the application to have a parameter for the brite config file:
+Here is an example of a .csv file:
+```
+bunny_183kbit/bunny_183kbit,183
+bunny_553kbit/bunny_553kbit,553
+bunny_1248kbit/bunny_1248kbit,1248
+bunny_2224kbit/bunny_2224kbit,2224
+bunny_4000kbit/bunny_4000kbit,4000
+bunny_8000kbit/bunny_8000kbit,8000
+```
+Save this file as dash/dash_videorate.csv. Your multimedia dataset directory should now look like this:
+```
+dash/
+  bunny_183kbit_dashinit.mp4
+  bunny_183kbit_dash1.m4s
+  ...
+  bunny_8000kbit_dashinit.mp4
+  bunny_8000kbit_dash1.m4s
+  ...
+  dash_videorate.csv
+dash.mpd
+```
+### Hosting Content (DASH Server)
+Hosting content is as easy as hosting files. The only difference is that you have to use ``ns3::ndn::DashServer`` instead of ``ns3::ndn::FileServer``, and that you need to provide the name of the .mpd file and the .csv file (relative to your content directory):
 
 ```cplusplus
-#include "ns3/ndnSIM/helper/ndn-brite-helper.hpp"
+  // Producer
+  ndn::AppHelper producerHelper("ns3::ndn::DashServer");
+  producerHelper.SetPrefix("/myprefix");
+  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/somedata/"));
+  producerHelper.SetAttribute("MPDFileToServe", StringValue("/dash/dash.mpd"));
+  producerHelper.SetAttribute("MP
+
+## 2. Multimedia Streaming (DASH over ICN)
+
+Adaptive multimedia streaming is a complex topic. In this tutorial, we will only cover how to use it in here. We will not cover the actual implementation and details of the DASH client and server. For more information on this topic, please refer to the [original publication](https://conferences.sigcomm.org/sigcomm/2016/pdf/papers/p673.pdf).
+
+Before we start, we need to point out that our multimedia dataset is stored in the following directory structure:
+```bash
+~/multimediaData
+~/multimediaData/video1/video1.mpd
+~/multimediaData/video1/1.m4s
+~/multimediaData/video1/2.m4s
+...
+~/multimediaData/video2/video2.mpd
+...
 ```
+The .mpd file is the DASH manifest file, and the .m4s files are segments of the video. Each .m4s file is a representation (with a specific bitrate) of a specific video segment (of a specific time period). We assume that the manifest file (mpd) and the video segments are already generated and available in this structure. 
+
+### Hosting Multimedia Content (DASH-Server)
+
+Hosting the multimedia content is very similar to hosting files. We will use the `ns3::ndn::FileServer` application to host the multimedia content, as shown in the following code:
 
 ```cplusplus
-int
-main(int argc, char* argv[])
-{
-  std::string confFile = "brite.conf";
-
-  CommandLine cmd;
-  cmd.AddValue ("briteConfFile", "BRITE configuration file", confFile);
-  cmd.Parse(argc, argv);
-```
-
-Next, we create an instance of the NDN stack and build the topology:
-
-```cplusplus
-  // Create NDN Stack
-  ndn::StackHelper ndnHelper;
-
-  // Create Brite Topology Helper
-  ndn::NDNBriteTopologyHelper bth (confFile);
-  bth.AssignStreams (3);
-  // tell the topology helper to build the topology 
-  bth.BuildBriteTopology ();
-```
-
-Now we go through that topology and create a ```NodeContainer``` for servers, clients and routers, so we can distingiush the configuration of those nodes.
-
-```cplusplus
-  // Separate clients, servers and routers
-  NodeContainer client;
-  NodeContainer server;
-  NodeContainer router;
-```
-
-Iterate over all AS (Autonomous System) and get all non leaf nodes
-```cplusplus
-  for (uint32_t i = 0; i < bth.GetNAs(); i++)
-  {
-    std::cout << "Number of nodes for AS: " << bth.GetNNodesForAs(i) << ", non leaf nodes: " << bth.GetNNonLeafNodesForAs(i) << std::endl;
-    for(int node=0; node < bth.GetNNonLeafNodesForAs(i); node++)
-    {
-      std::cout << "Node " << node << " has " << bth.GetNonLeafNodeForAs(i,node)->GetNDevices() << " devices " << std::endl;
-      //container.Add (briteHelper->GetNodeForAs (ASnumber,node));
-      router.Add(bth.GetNonLeafNodeForAs(i,node));
-    }
-  }
-```
-
-Iterate over all AS and get all leaf nodes
-```cplusplus
-  uint32_t sumLeafNodes = 0;
-  for (uint32_t i = 0; i < bth.GetNAs(); i++)
-  {
-    uint32_t numLeafNodes = bth.GetNLeafNodesForAs(i);
-
-    std::cout << "AS " << i << " has " << numLeafNodes << "leaf nodes! " << std::endl;
-
-    for (uint32_t j= 0; j < numLeafNodes; j++)
-    {
-      if (decideIfServer(i,j)) // some decision, can be random
-      {
-        server.Add(bth.GetLeafNodeForAs(i,j));
-      }
-      else
-      {
-        client.Add(bth.GetLeafNodeForAs(i,j));
-      }
-    }
-
-    sumLeafNodes+= numLeafNodes;
-  }
-
-  std::cout << "Total Number of leaf nodes: " << sumLeafNodes << std::endl;
-
-```
-Where ``decideIfServer(asNumber, leafNumber)`` needs to have some logic to decide whether this node should be a client or a server. Generally, a random strategy works well, you just need to make sure you know how many servers and clients you want to have (in relation).
-
-
-Now let's isntall the ndn stack and content stores:
-```cplusplus
-  // clients do not really need a large content store, but it could be beneficial to give them some
-  ndnHelper.SetOldContentStore ("ns3::ndn::cs::Stats::Lru","MaxSize", "100");
-  ndnHelper.Install (client);
-
-  // servers do not need a content store at all, they have an app to do that
-  ndnHelper.SetOldContentStore ("ns3::ndn::cs::Stats::Lru","MaxSize", "1");
-  ndnHelper.Install (server);
-
-  // what really needs a content store is the routers, which we don't have many
-  ndnHelper.setCsSize(10000);
-  ndnHelper.Install(router);
-```
-and choose a forwarding strategy
-```cplusplus
-  // Choosing forwarding strategy
-  ndn::StrategyChoiceHelper::InstallAll("/myprefix", "/localhost/nfd/strategy/best-route");
-```
-
-Install the GlobalRoutingHelper
-```cplusplus
-  // Installing global routing interface on all nodes
-  ndn::GlobalRoutingHelper ndnGlobalRoutingHelper;
-  ndnGlobalRoutingHelper.InstallAll();
-```
-
-Install the Multimedia Consumer (in this case an SVC consumer)
-```cplusplus
-  // Installing multimedia consumer
-  ns3::ndn::AppHelper consumerHelper("ns3::ndn::FileConsumerCbr::MultimediaConsumer");
-  consumerHelper.SetAttribute("AllowUpscale", BooleanValue(true));
-  consumerHelper.SetAttribute("AllowDownscale", BooleanValue(false));
-  consumerHelper.SetAttribute("ScreenWidth", UintegerValue(1920));
-  consumerHelper.SetAttribute("ScreenHeight", UintegerValue(1080));
-  consumerHelper.SetAttribute("StartRepresentationId", StringValue("auto"));
-  consumerHelper.SetAttribute("MaxBufferedSeconds", UintegerValue(30));
-  consumerHelper.SetAttribute("StartUpDelay", StringValue("0.1"));
-
-  consumerHelper.SetAttribute("AdaptationLogic", StringValue("dash::player::SVCBufferBasedAdaptationLogic"));
-  consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/SVC/BBB/BBB-III.mpd" )));
-```
-
-Start clients / install logic
-```cplusplus
-  // Randomize Client File Selection
-  Ptr<UniformRandomVariable> r = CreateObject<UniformRandomVariable>();
-  for(int i=0; i<client.size (); i++)
-  {
-    // TODO: Make some logic to decide which file to request
-    consumerHelper.SetAttribute("MpdFileToRequest", StringValue(std::string("/myprefix/SVC/BBB/BBB-III.mpd" )));
-    ApplicationContainer consumer = consumerHelper.Install (client[i]);
-
-    std::cout << "Client " << i << " is Node " << client[i]->GetId() << std::endl;
-
-    // Start and stop the consumer
-    consumer.Start (Seconds(1.0)); // TODO: Start at randomized time
-    consumer.Stop (Seconds(600.0));
-  }
-```
-
-Install the servers
-```cplusplus
-   // Producer
+  // Producer
   ndn::AppHelper producerHelper("ns3::ndn::FileServer");
+
+  // Producer will reply to all requests starting with /prefix
+  producerHelper.SetPrefix("/myprefix");
+  producerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/multimediaData/"));
+  producerHelper.Install(nodes.Get(2)); // install to a node from the nodecontainer
+```
+
+This will make the directory `/home/someuser/multimediaData/` and all contents (including sub-directories) fully available under the ndn prefix `/myprefix` within the simulator.
+
+### Requesting Multimedia Content (DASH-Client)
+
+In this section, we will use the `ns3::ndn::FileConsumerCbr::MultimediaConsumer` application to request the multimedia content. This application is specifically designed to deal with DASH streaming. The DASH client will automatically request the segments based on the DASH algorithm. Here is a simple example of how to use the DASH client:
+
+```cplusplus
+  // Consumer
+  ndn::AppHelper consumerHelper("ns3::ndn::FileConsumerCbr::MultimediaConsumer");
+  consumerHelper.SetAttribute("MpdFileToRequest", StringValue("/myprefix/video1/video1.mpd"));
+  
+  consumerHelper.Install(nodes.Get(0)); // install to some node from nodelist
+```
+
+In this example, the DASH client will request the mpd file of `video1` and start streaming based on the DASH algorithm. 
+
+### Full Example: Basic Multimedia Streaming
+
+First, we need to prepare our multimedia dataset. We can use any video and convert it into DASH format using MP4Box. Here is an example of how to do it:
+
+```bash
+# First, create a multimedia directory in your home directory
+mkdir ~/multimediaData
+
+# Second, convert your video into DASH format
+MP4Box -dash 2000 -rap -segment-name '%s' -url-template -out ~/multimediaData/video1/video1.mpd yourvideo.mp4
+```
+
+In this example, `yourvideo.mp4` is the video you want to stream. The `2000` parameter is the segment duration in milliseconds.
+
+## 2. Adaptive Multimedia Streaming (DASH)
+After understanding the basic file transfers, we will now focus on how to handle multimedia streams, in particular, the DASH protocol.
+
+Dynamic Adaptive Streaming over HTTP (DASH) is a popular streaming protocol. In DASH, the client (player) selects one of several available representations of a video and downloads the respective segments (usually 2 to 10 seconds of the video). The DASH client makes decisions based on the current network conditions, buffer levels, and other factors. It aims to maximize the video quality while preventing playback interruptions (buffer underruns).
+
+To simulate DASH, we implemented a DASH client (`ns3::ndn::DashClient`) and a DASH server (`ns3::ndn::DashServer`). The DASH server is very similar to the FileServer we discussed earlier, but it can only host multimedia content in DASH format. Similarly, the DASH client is an advanced version of the FileConsumer. It's not just requesting one file, but several files (video segments) in a row.
+
+The DASH client implementation is based on the concepts presented in [1]. It uses a simple buffer-based adaptation algorithm: if the buffer level exceeds a certain threshold, the DASH client will select a higher quality for the next segment, and if the buffer level is below a certain threshold, it will select a lower quality.
+
+We will discuss the following aspects: how to host content, how to request content, and how to trace a DASH client.
+
+### Hosting Content (DASH Server)
+Hosting DASH content is very similar to hosting any other content. The difference is that we use the `ns3::ndn::DashServer` instead of the `ns3::ndn::FileServer`. The multimedia content needs to be in DASH format.
+
+```cplusplus
+  // DASH Server
+  ndn::AppHelper producerHelper("ns3::ndn::DashServer");
 
   // Producer will reply to all requests starting with /myprefix
   producerHelper.SetPrefix("/myprefix");
   producerHelper.SetAttribute("ContentDirectory", StringValue("/home/someuser/multimediaData/"));
-  producerHelper.Install(server); // install to servers
-
-  ndnGlobalRoutingHelper.AddOrigins("/myprefix", server);
+  producerHelper.Install(nodes.Get(2)); // install to a node from the nodecontainer
 ```
 
-Install Routing:
+### Requesting Content (DASH Client)
+The DASH client needs to be installed on some node. It will automatically request the MPD (Media Presentation Description) file and start requesting segments based on the MPD and its buffer level. The DASH client also handles timeouts and re-transmissions if necessary.
+
 ```cplusplus
-  // Calculate and install FIBs
-  ndn::GlobalRoutingHelper::CalculateAllPossibleRoutes();
+  // DASH Consumer
+  ndn::AppHelper consumerHelper("ns3::ndn::DashConsumer");
+  consumerHelper.SetAttribute("MPD", StringValue("/myprefix/video1/video.mpd"));
+
+  consumerHelper.Install(nodes.Get(0)); // install to some node from nodelist
 ```
 
-Run the Simulation
+### Tracing DASH Clients
+You can also trace DASH clients and get information about buffer levels, segment numbers, download times, and other metrics. It is very similar to tracing file transfers. You can also use the ns-3 tracing facilities to trace other metrics, such as link utilization or packet loss.
+
+## 3. Generating Large Networks using BRITE
+In order to generate larger networks and test the scalability of your application, you can use the BRITE topology generator. This allows you to generate complex network topologies based on different models, such as Barabási–Albert or Waxman models.
+
+We will not cover BRITE in detail, but we encourage you to check out the [BRITE User Manual](https://www.cs.bu.edu/brite/user_manual/node14.html)
+### Full Example: Basic DASH Streaming
+A full example can be found in the [AMuSt-ndnSIM/examples/ndn-dash-simple-example.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-dash-simple-example.cpp) file.
+
+### Tracing DASH Streaming
+For more detailed information about the DASH streaming, especially the observed throughput and the selected multimedia quality, you can use the `DashTrace` function:
+
 ```cplusplus
-  Simulator::Stop(Seconds(1000.0));
-  Simulator::Run();
-  Simulator::Destroy();
-
-  std::cout << "Simulation ended" << std::endl;
-
-  return 0;
+// DashTrace is called when a DASH segment has been downloaded
+void
+DashTrace(Ptr<ns3::ndn::App> app, shared_ptr<const ndn::Name> interestName, uint32_t segmentNr, uint32_t segmentSize, int64_t segmentBitrate, double segmentDownloadSpeed)
+{
+  std::cout << "Trace: Segment finished downloading: " << Simulator::Now().GetMilliSeconds () << " "<< *interestName << " SegmentNr: " << segmentNr << " SegmentSize: " << segmentSize << " SegmentBitrate: " << segmentBitrate << " DownloadSpeed: " << segmentDownloadSpeed << std::endl;
 }
 ```
 
+Next, we need to make sure to connect it as a trace source:
 
-Full example here: [examples/ndn-multimedia-brite-example1.cpp](examples/ndn-multimedia-brite-example1.cpp).
+```cplusplus
+// Connect Tracer
+Config::ConnectWithoutContext("/NodeList/*/ApplicationList/*/DashPlayerStats", MakeCallback(&DashTrace));
+```
+
+You can find the full source code in the [[AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/examples/ndn-dash-simple-example-tracers.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-dash-simple-example-tracers.cpp) file.
+
+## 3. Generating Large Networks using BRITE
+In this section, we will show you how to generate larger networks using the BRITE topology generator. BRITE can be used to generate different kinds of topologies, including hierarchical, router-level, and AS-level topologies. 
+
+You can use the `BriteTopologyHelper` to generate the network topology and install the NDN stack:
+
+```cplusplus
+BriteTopologyHelper briteth;
+briteth.BuildBriteTopology(nd
+
+## 3. Large Example: DASH Streaming with BRITE
+
+In this last section, we will create a large example using the BRITE topology generator. We will also show how to create multimedia streaming clients, i.e., DASH clients, and how to trace their behavior.
+
+### BRITE
+
+At first, we need to create a BRITE configuration file. We will use the briteconf/ASBarabasiAlbert.conf file from the [ndnSIM examples directory](https://github.com/named-data-ndnSIM/ndnSIM/blob/master/examples/briteconf/ASBarabasiAlbert.conf). The only change we need to make is the EdgeConn parameter. In our case, we will use 2. 
+
+Next, we create a scenario similar to before. The difference is that we use the BRITE topology helper. We also specify our custom BRITE configuration file. The relevant code is as follows:
+```cplusplus
+  // Creating nodes
+  BriteTopologyHelper briteth;
+  briteth.SetConfFile("src/ndnSIM/examples/briteconf/ASBarabasiAlbert.conf");
+  briteth.AssignStreams(3);
+  briteth.BuildBriteTopology(ndnHelper);
+```
+
+You can find the full source code here [[AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/examples/ndn-file-brite.cpp]([https://github.com/ChristianKreuzberger/AMuSt-ndnSIM](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking)/blob/master/examples/ndn-file-brite.cpp).
+
+This will create a network with about 20 nodes. We also added some random server and client. 
+
+### Tracing in BRITE
+
+Tracing in BRITE is similar to the previous examples. The only difference is that you need to enable tracing on the BRITE topology helper:
+```cplusplus
+  // Enable BRITE Traces
+  briteth.EnableAsciiAll("brite.trace");
+  briteth.EnablePcapAll("brite");
+```
+You can now start the simulation with
+```bash
+./waf --run ndn-file-brite
+```
+
+### Adding Multimedia Streaming Clients (DASH)
+
+To add DASH clients, we will use the ns3::ndn::PlayerApp application. This application was developed specifically for DASH clients. It has many parameters to adjust the client's behavior. 
+
+In our case, we will add a single DASH client that will request a video from a server. The relevant code is as follows:
+```cplusplus
+  // DASH Consumer
+  ndn::AppHelper consumerHelper("ns3::ndn::PlayerApp");
+  // Name of video to request
+  consumerHelper.SetAttribute("VideoId", StringValue("/myprefix/BigBuckBunny_2sinit.mp4"));
+  // Start and stop time
+  consumerHelper.SetAttribute("StartTime", StringValue("0.0")); // in Sec
+  consumerHelper.SetAttribute("Stop
+
+Full example here: [examples/ndn-multimedia-brite-example1.cpp](https://github.com/ulen2000/Performance-Evaluation-of-Dynamic-Adaptive-Streaming-over-Information-Centric-Networking/examples/ndn-multimedia-brite-example1.cpp).
 ------------------
 I have packaged the environment and uploaded it to [Docker Hub](docker pull 27718842/dash\_ndnsim\_samus).
 
